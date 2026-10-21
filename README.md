@@ -62,10 +62,10 @@ standalone in any browser (see *Running it* below).
 
 ## A note on the sample data
 
-The embedded dataset contains the gallery's real working records, including artists'
-contact details (email, phone). If you fork this for your own gallery, replace it
-with your own data — and if you republish publicly, consider scrubbing those personal
-contacts first.
+The embedded dataset is based on the gallery's real working records, but personal
+contact details (email addresses and phone numbers) have been removed before
+publication. If you fork this for your own gallery, replace the sample records with
+your own data.
 
 ## License
 
