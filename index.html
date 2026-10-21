@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Do Tell · Gallery at a glance</title>
+<link rel="stylesheet" href="kimi-standalone.css">
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; }
+  .wrap {
+    position: relative;
+    height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    font-family: var(--kimi-font-sans);
+    color: var(--kimi-color-text-primary);
+    padding-block-start: var(--kimi-space-4);
+    padding-inline: var(--kimi-space-4);
+    padding-block-end: var(--kimi-space-3);
+    gap: var(--kimi-space-3);
+  }
+  button, input, select, textarea { font: inherit; }
+  svg text { font-family: var(--kimi-font-sans); }
+
+  /* Header — kept non-interactive; Canvas drag strip overlays the top edge */
+  .head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--kimi-space-3); min-height: 40px; }
+  .wordmark { font-family: var(--kimi-font-serif); font-size: 20px; font-weight: 500; }
+  .wordmark small { font-family: var(--kimi-font-sans); font-size: 12px; color: var(--kimi-color-text-tertiary); margin-left: var(--kimi-space-2); letter-spacing: 0.04em; }
+  .today { font-size: 12px; color: var(--kimi-color-text-tertiary); font-variant-numeric: tabular-nums; }
+
+  .tabs { display: flex; gap: var(--kimi-space-1); border-bottom: 0.5px solid var(--kimi-color-border); padding-bottom: var(--kimi-space-2); }
+  .tab {
+    border: none; background: transparent; cursor: pointer;
+    padding: 4px 10px; border-radius: var(--kimi-radius-chip);
+    font-size: 14px; color: var(--kimi-color-text-secondary);
+    transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+  }
+  .tab:hover { background: var(--kimi-color-surface-muted); }
+  .tab.is-selected { color: var(--kimi-color-text-primary); background: var(--kimi-color-surface-muted); font-weight: 500; }
+
+  .view { flex: 1; min-height: 0; overflow-y: auto; display: none; }
+  .view.active { display: block; }
+
+  .view-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--kimi-space-3); margin-bottom: var(--kimi-space-2); }
+  .view-hint { font-size: 12px; color: var(--kimi-color-text-quaternary); }
+
+  .grid2 { display: grid; grid-template-columns: 1.2fr 1fr; gap: var(--kimi-space-3); }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--kimi-space-3); }
+  .panel { border: 0.5px solid var(--kimi-color-border); border-radius: var(--kimi-radius-panel); padding: var(--kimi-space-3); }
+  .label { font-size: 12px; color: var(--kimi-color-text-tertiary); margin-bottom: 2px; }
+  .value { font-size: 26px; font-weight: 500; line-height: 1.15; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+  .sub { font-size: 12px; color: var(--kimi-color-text-tertiary); margin-top: 2px; }
+
+  .cover { width: 100%; aspect-ratio: 21 / 9; border-radius: var(--kimi-radius-input); display: block; border: 0.5px solid var(--kimi-color-border); }
+  .cover-sm { width: 64px; height: 44px; border-radius: var(--kimi-radius-chip); flex: none; border: 0.5px solid var(--kimi-color-border); }
+
+  .show-title { font-family: var(--kimi-font-serif); font-size: 20px; font-weight: 500; margin-top: var(--kimi-space-2); }
+  .show-meta { font-size: 14px; color: var(--kimi-color-text-secondary); margin-top: 2px; }
+  .show-dates { font-size: 12px; color: var(--kimi-color-text-tertiary); margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+  .chip { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: var(--kimi-radius-full); white-space: nowrap; }
+  .chip-solo { color: var(--kimi-color-accent); background: color-mix(in srgb, var(--kimi-color-accent) 12%, transparent); }
+  .chip-curated { color: var(--kimi-chart-4); background: color-mix(in srgb, var(--kimi-chart-4) 12%, transparent); }
+  .chip-dodo { color: var(--kimi-chart-3); background: color-mix(in srgb, var(--kimi-chart-3) 14%, transparent); }
+  .chip-sold { color: var(--kimi-color-positive); background: color-mix(in srgb, var(--kimi-color-positive) 12%, transparent); }
+  .chip-available { color: var(--kimi-color-text-secondary); background: var(--kimi-color-surface-muted); }
+  .chip-confirmed { color: var(--kimi-color-positive); background: color-mix(in srgb, var(--kimi-color-positive) 12%, transparent); }
+  .chip-proposed { color: var(--kimi-color-warning); background: color-mix(in srgb, var(--kimi-color-warning) 14%, transparent); }
+
+  .row-item { display: flex; align-items: center; gap: var(--kimi-space-3); padding: var(--kimi-space-2) var(--kimi-space-1); border-bottom: 0.5px solid var(--kimi-color-border); border-radius: var(--kimi-radius-small); }
+  .row-item:last-child { border-bottom: none; }
+  .row-main { flex: 1; min-width: 0; }
+  .row-title { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row-sub { font-size: 12px; color: var(--kimi-color-text-tertiary); margin-top: 1px; }
+  .row-end { text-align: right; flex: none; font-variant-numeric: tabular-nums; }
+
+  /* Clickable catalog entries */
+  .is-clickable { cursor: pointer; transition: background var(--t-fast) var(--ease-out); }
+  .is-clickable:hover { background: var(--kimi-color-surface-muted); }
+  tr.is-clickable:hover td { background: var(--kimi-color-surface-muted); }
+
+  table.kimi-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .kimi-table th { text-align: left; font-weight: 500; font-size: 12px; color: var(--kimi-color-text-tertiary); padding: 4px 8px; border-bottom: 0.5px solid var(--kimi-color-border); }
+  .kimi-table td { padding: 6px 8px; border-bottom: 0.5px solid var(--kimi-color-border); }
+  .kimi-table tr:last-child td { border-bottom: none; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+  .section-title { font-size: 17px; font-weight: 500; margin: var(--kimi-space-3) 0 var(--kimi-space-2); }
+  .section-title:first-child { margin-top: 0; }
+  .ex-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--kimi-space-3); }
+  .ex-card { border: 0.5px solid var(--kimi-color-border); border-radius: var(--kimi-radius-panel); padding: var(--kimi-space-2); transition: background var(--t-fast) var(--ease-out); }
+  .ex-card.is-clickable:hover { background: var(--kimi-color-surface-muted); }
+  .ex-card .cover { aspect-ratio: 16 / 7; }
+  .ex-name { font-family: var(--kimi-font-serif); font-size: 15px; font-weight: 500; margin-top: var(--kimi-space-2); }
+  .mono-note { font-size: 12px; color: var(--kimi-color-text-quaternary); margin-top: var(--kimi-space-3); }
+
+  /* Detail / edit drawer */
+  .drawer-veil { position: absolute; inset: 0; z-index: 20; display: flex; justify-content: flex-end; background: color-mix(in srgb, var(--kimi-color-text-primary) 16%, transparent); animation: veilIn var(--t-fast) var(--ease-out); }
+  .drawer-veil[hidden] { display: none; }
+  @keyframes veilIn { from { opacity: 0; } to { opacity: 1; } }
+  .drawer {
+    width: min(420px, 94%); height: 100%; box-sizing: border-box;
+    background: var(--kimi-color-surface-raised); border-left: 0.5px solid var(--kimi-color-border);
+    border-radius: var(--kimi-radius-large) 0 0 var(--kimi-radius-large);
+    display: flex; flex-direction: column;
+    animation: drawerIn var(--t-normal) var(--ease-out);
+  }
+  @keyframes drawerIn { from { transform: translateX(24px); opacity: 0.4; } to { transform: translateX(0); opacity: 1; } }
+  .drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--kimi-space-3); padding: var(--kimi-space-4) var(--kimi-space-4) var(--kimi-space-2); }
+  .drawer-title { font-size: 17px; font-weight: 500; line-height: 1.3; }
+  .drawer-kind { font-size: 12px; color: var(--kimi-color-text-tertiary); margin-top: 2px; }
+  .drawer-close { border: none; background: transparent; cursor: pointer; font-size: 16px; color: var(--kimi-color-text-secondary); width: 28px; height: 28px; border-radius: var(--kimi-radius-button); flex: none; line-height: 1; }
+  .drawer-close:hover { background: var(--kimi-color-surface-muted); color: var(--kimi-color-text-primary); }
+  .drawer-body { flex: 1; min-height: 0; overflow-y: auto; padding: var(--kimi-space-2) var(--kimi-space-4); display: flex; flex-direction: column; gap: var(--kimi-space-3); }
+  .drawer-foot { display: flex; align-items: center; gap: var(--kimi-space-2); padding: var(--kimi-space-3) var(--kimi-space-4) var(--kimi-space-4); border-top: 0.5px solid var(--kimi-color-border); }
+  .drawer-foot .spacer { flex: 1; }
+  .drawer-status { font-size: 12px; color: var(--kimi-color-text-tertiary); }
+  .drawer-status.is-error { color: var(--kimi-color-danger); }
+  .drawer-status.is-ok { color: var(--kimi-color-positive); }
+  .f-label { font-size: 12px; color: var(--kimi-color-text-secondary); display: block; margin-bottom: 4px; }
+  .f-input, .f-select, .f-textarea {
+    width: 100%; box-sizing: border-box; font-size: 14px; color: var(--kimi-color-text-primary);
+    background: var(--kimi-color-surface); border: 0.5px solid var(--kimi-color-border);
+    border-radius: var(--kimi-radius-input); padding: 7px 10px; outline: none;
+  }
+  .f-input:focus, .f-select:focus, .f-textarea:focus { border-color: var(--kimi-color-text-primary); }
+  .f-textarea { resize: vertical; min-height: 72px; line-height: 1.45; }
+  .f-check { display: flex; align-items: center; gap: var(--kimi-space-2); font-size: 14px; cursor: pointer; }
+  .f-check input { accent-color: var(--kimi-color-text-primary); width: 15px; height: 15px; }
+  .f-group { border: 0.5px solid var(--kimi-color-border); border-radius: var(--kimi-radius-panel); padding: var(--kimi-space-2) var(--kimi-space-3); display: flex; flex-direction: column; gap: var(--kimi-space-1); }
+  .f-group-title { font-size: 12px; color: var(--kimi-color-text-tertiary); margin-bottom: 2px; }
+  .btn { border: none; cursor: pointer; font-size: 14px; border-radius: var(--kimi-radius-button); padding: 7px 14px; transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-primary { background: var(--kimi-color-text-primary); color: var(--kimi-color-surface); }
+  .btn-primary:not(:disabled):hover { opacity: 0.85; }
+  .btn-secondary { background: var(--kimi-color-surface-muted); color: var(--kimi-color-text-primary); }
+  .btn-secondary:not(:disabled):hover { background: color-mix(in srgb, var(--kimi-color-text-primary) 10%, transparent); }
+  .btn-ghost { background: transparent; color: var(--kimi-color-text-secondary); border: 0.5px solid var(--kimi-color-border); }
+  .btn-ghost:not(:disabled):hover { color: var(--kimi-color-text-primary); border-color: var(--kimi-color-text-tertiary); }
+  .btn-danger { background: transparent; color: var(--kimi-color-danger); border: 0.5px solid color-mix(in srgb, var(--kimi-color-danger) 40%, transparent); }
+  .btn-danger:not(:disabled):hover { background: color-mix(in srgb, var(--kimi-color-danger) 10%, transparent); }
+  .btn-add { font-size: 13px; padding: 5px 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+        <div class="wordmark" style="display:flex; align-items:center; gap:8px;"><span style="display:inline-flex; width:26px; height:26px; border-radius:6px; background:#b5502a; align-items:center; justify-content:center; flex:none;"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAmQAAAJkCAMAAACIz82OAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAAZQTFRF////AAAAVcLTfgAAAAJ0Uk5T/wDltzBKAAAOd0lEQVR42uzdS2KDSA4AUNX9Lz3bnkW6E2NR+jztSZD0oioTwHGESI5QAgGZgEwIyARkAjIhIBOQCQGZgExAJgRkAjIBmRCQCciEgExAJiATAjIBWa2cwh8cZL+28pmWT48T+5DFE2SYQfZbKZ9Y+fxIsQtZxKdWPj9SrEIW8TGVeHCsWIQsHkgJyiD7K5M/Snl0sNiCLJ44iaAMsg+U/MHJs6PFDmSRgAwzyP7byK+VPD1ezEcW8UzJ0+PFeGQRD5HE458ghiOLx0aCMsgeAPkNkfjCzxCDkcVzIRGUQfbMx38J+cbPEHORxXvIMIPscx8BGWTJyAIyyLKVMQZZtjLGIMtGZrGELFsZY5ClX8ZgDLLsUcYYZNnKLJaQZS+YjEGWrowxyLKRGWSQZStjDLJsZYxBBhlk7ZUxBlm2MsYgy0YWkEGWrYwxyFKVMQbZC8oslpClL5iMQVZHGRiQpSsDA7JsZFxAlq0MC8iylVEBGWSQtVcGBWTZypiALF0ZE5BlI0MCsmxlRECWrowIyLKRAQFZtjIeIEtXxgNk2chwgCxbGQ2QpSujATLGILMjExuQud4PWW1goEH2jjDQIHsDGGeQvSIMNMjeAAYaZPFmYLIPWdwIVBYhi3tBywpkcT2IGY0sygQ1M5FFtfhCQpAxlqps10SE7AayZesuZNcG2R5l9mQ3kQVkkKUj28EMsntbsjXKILtxBWOZsi4pDkYWkEGWjmw8M8guXe/fpKxNerORBWSQpSMbzQyyKsgCMsq+yWHZLUSQ1UEWkEGWjmwqM8hKIQvIeilLg5maCmR9kP32kE8kJmcCWQ9kvz/kc8B5mUBWX9mfjvjEcHoekNVG9tcjPlD8Rh6Q1UX2xhHxykCGrKayr7B8Ycu07wniKci+NfvyrzEsfFB9BLIvLrAPftnXPyRDVgfZV3dx/334+1f7ILusLP1z3FVkAdl1ZC9dLLhnbIiyxsjevCKV8FTvImbNcvjYxvMefv2p3j3KWiL7ZlP/+uvfR9afWT9kX25qket8o5UNfxarVP+u3sIG2Qpkt++UhAyywcoga2KsszLIuhhrzAyyPsbaKoOskbGuzCDrhSwggyzbWEtlkDUz1pEZZO2M9VMGWUNk3ZhB1tFYM2WQtTTWixlkTY11UgZZW2QBGWTZxvowg6yxsS7KIOtsrIkyyHoja8EMsubGOiiDrLuxBswg62+svDLIBhirrgyyEchqM4NshrHSyiAbYqwyM8jGGKurDLJByAKyRcjiWkC2BVkEZZDlNiWCMshGIyvIbDayc6MjEZStQlZzem5TBtlAY9WYQTYTWUDG2CplkA01VkkZZFONFWIG2VxjZZRBNhlZQMbYEmaQzTZWQhlkw41VUAbZeGQBGWPzmUG2wNhtZZBtMHZZGWQ7kAVkjI1WBtkSYzeZQbbG2D1lkC1CFpAxNlUZZJuMXVIG2Spjd5RBtsvYFWaQrUMWkDE2Txlk+4y9rgyyhcbeVgbZSmQBGWOzlEG209iryiBbauxNZZCtRRaQMTZHGWR7jb3GDLLNxl5SBlktY2eiMshKIbswJSFbaGygsrjZKsZ+6PcwZXG1VYz90O1Zyu4iC8h+6jVk32sVYz+1epCyuN0qxn4sxBhlcb1VjP1YhynK7iMLyH6swhBlUaBVjP1cgxHKokKrGLuxPr/XhSjRKhuy0cpqIAvGKjAbhCwg+2P23ZVFkVYxVoLZEGT3H2totlgOUFYGWTBWQdkIZAUea+i3WHZXFoVaxVgFZpBtNtZXWVTqlQ3ZTGVRqlcGWQlmnZFVuN28ubGeyiDrZewdZX2RlbjdvPGGrK+yqNYrxkowGz3J6imr2MdmyqJcuxgbpywOZf2MvaFs6sXYesrq9rCTsijYNIOsBrPRyIKxWcriGGVNjeUr64qsk7IG3euhLEq2ziAbpawmsmBskrI4lDU2ls6sK7IeC2aju7XKK4Osu7EGyuJQ1nmxzFcGGWMdlMWhrL2x6soga74he0FZU2TFlfUzVlsZZDOMlVYG2RBjqcp6IiusLLoiq6sMsjHG6iqDbMhiWfkvBLJBxqoqq4wsBhmLzQmU/gzH2IxRDNmgxbJqDpANM5aXBWSMFVZW+7q6DdkIZaU/XYZBVioVyBgrqwyyicay0oHMhqyqMshmGiulrPY0t1hWywkyxmqOstr301gsR4wyyMYaq6Os9lUci2W9zCBjrKKyKJ05Y5BNGGQxGlkNZbF8kA03lpJgA2SxA9k5lF1DVqtR841l5AiZxbLcKAvGhhsrMMqicL4WyyHKKt/hzBhk6claLIcoC8bmG0tItiiyYr1aZezyKCt8X6AN2ZRRFoxtMHZXWd1btiyWkKUnyFjtnIshq9ethcZuKit7WZ0xyBhrh+yesqof4hirn3kNZMEYZLnIivZrr7Frymp+A6NBBll6OoyNUhYVc2EMsuxEbMi6FOAWstINW2/sjrKol4LFErLsBBgbpyzKnT1jkGWfuw1ZK2VvIovFxlYji9eQBWNGWS6yYAyyXGTBGGW5yLr0C7K2yIKxc7Yry0UWjDU19vYoC8b2GeuCrFO7GLu8XsZ4YgZZT2SMNTf2srIYToyxlsgYG2Ds3f/TxOWutfocBdlnpYjJY4yxjsi6NYqxEutl3OvZYQyy29eJIZuiLBhbaqwksnZNYqwdsnY9Yuy9Cn0JWbsOMVZnbsS759PzOhBkjZAdxlaul/He2RzGIMs9mcPY2vUy3jmXM8TYLGRnErLGf6GjjRVC1q4vjLVD1q4tjO1CdkYZm4fsJWWReBrtPzKNN1YEGWOTjXVHdhiD7HfIunWEsVsFex3ZmWcMsmLIzjHIrJe/RtasHYwtQcaY9fJPyBiDrB6ywxhkycjOTGQHsjxkjM031g3ZUGPDkb2h7HvIGIPs78g69YKxDcgYgywbGWOQzUZmQ7YCmUEG2UfIGFth7I33nPRHxtgKZDZkkP1rvb6AjDHIIGOsPTLGIBuNzGK5AxljkEHGGGSMQcYYZIuR2ZBBZpBB1h4ZY2uQMQbZE2SnckdsyCAzyCBrj4wxyBiDrDsyG7I5yM4+ZAcyyBiDjDHIRiBjbBayksogg4wxyLojY2wcslOtN4ytROYL7CF7iKzYKGNsKbJgDLI5yBgrXtZPkVVSBhlkjFktP0RWRhljkDEG2efIiihjbDuyMMgge4SswihjrPOHyy8hC8Yge4TsvjLG5iO7rcwggyy7YYytQHZ1lDHW3dgvkd1UxhhkbY1BVg3ZtbsXGVuE7DDG2G1kjEH2HNmBDLJ0ZIcxyD6raHzljBgzyL6E7LzbNMYg6zvI4KqM7FgsGUtHdiyWkP29qPH8vBiD7LvIDmOMpSM7NmSQpSM7Bhlk6cgOY4z9qa7x7PQYg6wlsoAMsn+cn0HGWBqywxhkv69sPDlHxhhLRXYYgywdWbO1ErLEQrdCxtjEQbYGGVaQMTZ4tSyFzGIJGWOMfVbdYAyyNcgYa1tryCC7PsjKIGNs7iCrgowxyBhjrDuygGyysRLIGIOMMcYgY6z2ICuAjLHpg+w+MoslZIwx9rjGwRhjs5ExtmGQ3UUWkG0YZFeRMda+3uWRMbZkkF1ExtiWQXYPWUDWv+DFkTG2Z5DdQhaQ7Rlkl5BFULbH2GvI/u+kIiiDrN3kouxCAyCjrIyxd5BFUAbZSGSUFTE2eLmkLLf65ZBhttnYe9fJKIPM9p+xtLLGoYyxQcguMWPsdk3jUMbYLGSYLRxkF+7CoGzbILtxqw9ly4zduZ+Mst5lboGMslXGht5+jVmp7xAa+rQSZYUG2dTnLikLyChbZGzwC1dWMwvIKFtlbPJL8PYqC8gwW2Zs9tuvdyoLyChbZ2z8196sU1axajG/MquYBWSUbTS24Zt7FzELyCjbaezEmhKNZ1a3VHEoY2wRMk//zjRWCxllI42d2FasmcwCMspWG6uHzDumSlZsGLJbyoKxrNrEoay3sgaVibWFm8GsRVniUNaYWUBGGWOVkd1TFoh9ux5xKGvKLCAzzIYU58xGZpjNMFYb2U1l/vq2ILuqzHb1WzUIy0I3Zf0qYPPRjVnD9Bt8kMLsWjH2ILusbPFTEGcRstvKtj6belYhu65s5RtDzjJk95UFY+ORbWfWO133HNRn1j7XRvdPRax0NiDPTjfpxUJmI5JsdSdoxDJnQxJ0u3FZZnPS8+REUWeTUmv3FFjEAmfD0ur3qGHUCv9Em4ismrIvX1KaOJ47PpsfFWNKYgeyyswevsNr8DbTW0YK9Gn6R5muL0yK8tEyDciaKfvXxs1b7ycia6Ss95/DamSY9bm2fCgTyf8n6/3eZzJa/C+2+cvF2ejw//7235OAR3ljx5dxiGxjA5BRVt3YBGSUFTd2ZnwRHyeVjR3f9sgYZJS1NzYGGWV1jZ1B3/QOTFFjk5BRVtTYKGSU1TQ2CxlmJY1NQ0ZZQWPjkFFWz9g8ZJSVMzYQGWbVjI1ERlktYzORYVaJ2FhklBUyNhYZZXWMzUWGWRljk5FRVsTYaGSY1TA2HBllBYiNR0ZZAWPjkWF239gCZJTdNrYBGWZ3iS1BRtnlb+s8BzPGIKOsNbFFyDYzO5BhNtzYLmQHMcgwG2lsHbLDGGSYjSO2EtkeZgcyzHYQW4vsMAYZZnOIbUY2mVm1Qp+DGWOQYdaaGGTzmB3IMFtHDLJZzKqWl7AxzOoWl68hzCqXlq4ZzA5knO0lBtkIZuVrilV3Zg0qClVvZy3KSVRnZk2KyVNbZ30qCVNTZp3qiFJLZ72KyFE/Z+0qCFE3Zw3LR1ArZz1rh08fZ20Lx04TZ52rBk4HZ81LRk15aP3LRUxpaDNKRUtdaGPKREpJaLNKREk5afOqA0glakPrgkYJarMrAsVNbkvqgIKATEAmBGQCMgGZEJAJyISATEAmIBMCMgGZgEwIyARkQkAmIBOQCQGZgEzsiP8JMADMmxswQQAHVwAAAABJRU5ErkJggg==" alt="Do Tell logo" style="width:16px; height:16px; object-fit:contain;"></span><span>Do Tell<small>GALLERY AT A GLANCE</small></span></div>
+    <div class="today" id="today"></div>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Gallery views">
+    <button class="tab is-selected" data-view="overview" role="tab" aria-selected="true">Overview</button>
+    <button class="tab" data-view="artists" role="tab" aria-selected="false">Artists</button>
+    <button class="tab" data-view="artworks" role="tab" aria-selected="false">Artworks</button>
+    <button class="tab" data-view="exhibitions" role="tab" aria-selected="false">Exhibitions</button>
+    <button class="tab" data-view="planning" role="tab" aria-selected="false">Planning</button>
+  </div>
+  <div class="view active" id="view-overview"></div>
+  <div class="view" id="view-artists"></div>
+  <div class="view" id="view-artworks"></div>
+  <div class="view" id="view-exhibitions"></div>
+  <div class="view" id="view-planning"></div>
+</div>
+
+<div class="drawer-veil" id="drawer-veil" hidden>
+  <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-title" id="drawer-title"></div>
+        <div class="drawer-kind" id="drawer-kind"></div>
+      </div>
+      <button class="drawer-close" id="drawer-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="drawer-body" id="drawer-body"></div>
+    <div class="drawer-foot">
+      <button class="btn btn-danger" id="drawer-delete" hidden>Delete</button>
+      <span class="spacer"></span>
+      <span class="drawer-status" id="drawer-status"></span>
+      <button class="btn btn-ghost" id="drawer-cancel">Cancel</button>
+      <button class="btn btn-primary" id="drawer-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- Date logic (mirrors the Do Tell app) ----------
+const COMMISSION = 0.30;
+const iso = s => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d); };
+const monthKey = (y, m) => y + '-' + String(m + 1).padStart(2, '0');
+function firstSaturday(y, m) { const d = new Date(y, m, 1); return 1 + ((6 - d.getDay()) + 7) % 7; }
+function secondSaturday(y, m) { return new Date(y, m, firstSaturday(y, m) + 7); }
+function fourthSaturday(y, m) { return new Date(y, m, firstSaturday(y, m) + 21); }
+const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const money = n => '$' + Math.round(n).toLocaleString('en-US');
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ---------- Gallery data ----------
+// Live data arrives through the widget data slot (synced from the Do Tell app's
+// data/gallery-state.json). FALLBACK keeps the widget useful before the first sync.
+const FALLBACK ={
+  "artists": [
+    {
+      "id": "artist-marisol",
+      "name": "Holly Haney",
+      "bio": "Holly Haney is an MIT-grad, artist, and commercial film producer who lives and works in Austin, Texas.\n \nWith over seven years of experience in production—including in-house at Nike Global—Holly is an experienced producer now working primarily as a commercial line producer and production manager.\n \nHer background spans the production industry, with deep familiarity across all phases of the process. Since graduating from MIT in 2018 with a BS in Media, she has contributed to projects for clients including Nike, Google, adidas, Paypal, Dell, Intel, Spectrum, Budweiser, Alaska Airlines, and many more.\n \nWhen she isn't producing, art remains her central passion and parallel practice.\n \nHolly is an exhibiting artist working primarily in charcoal and acrylic. She has presented solo exhibitions at One Grand Gallery and Tips on Failing in Portland, where she showcased her portrait series Portraits of Them. Her work has also been included in group exhibitions at Cloudtree Gallery, Mexic-Arte Museum, Big Medium, and Art Hub ATX.\n \nHer practice centers around portraiture, exploring the tension between individual identity and collective belonging. As a queer artist, she is drawn to depicting figures that feel strange, unruly, and expansive—characters that exist outside of convention and resist easy definition.",
+      "location": "Austin, TX",
+      "email": "hhaney95@gmail.com",
+      "phone": "208.360.7532",
+      "instagram": "@hollymaverick",
+      "website": "https://www.hollyhaney.com",
+      "status": "shown",
+      "notes": "",
+      "mediums": [
+        "Painting",
+        "Drawing"
+      ]
+    },
+    {
+      "id": "artist-theo",
+      "name": "Esteban Marquez",
+      "bio": "Esteban Marquez spends his days drawing skulls and rearranging pixels in Austin, Texas. He blends hand-drawn and digital techniques to design apps, zines, t-shirts, and flyers. He's created work for clients like Art21, Toast, Texas Monthly, and more. Esteban looks forward to many more days spent drawing flames and foraging for fonts.\n\nSkills:\n- Digital design\n- Illustration\n- Branding\n- Photochop",
+      "location": "Austin, TX",
+      "email": "estebangmarquez@gmail.com",
+      "phone": "915.539.4869",
+      "instagram": "@holidays_in_the_united_states",
+      "website": "www.holidaysintheunitedstates.me/contact",
+      "status": "shown",
+      "notes": "",
+      "mediums": [
+        "Painting",
+        "Printmaking",
+        "Graphic Design"
+      ]
+    },
+    {
+      "id": "artist-priya",
+      "name": "Nina Sanchez",
+      "bio": "Metal Baby is the ceramic brainchild of Nina Sanchez, a Mexican American artist based in Austin, Texas. Metal Baby pieces are all hand-built, so nothing is perfectly smooth and nothing is pretending to be factory-made.\n\nEach Metal Baby piece is a small offering to being a little metal and a little not, made to sit beside your plants, trinkets, and dust bunnies like a tiny, dramatic roommate.",
+      "location": "Austin, TX",
+      "email": "hello@ninasanchez.design",
+      "phone": "915.526.2700",
+      "instagram": "@i.am.metalbaby",
+      "website": "www.metalbabystudio.com",
+      "status": "shown",
+      "notes": "",
+      "mediums": [
+        "Ceramics",
+        "Graphic Design",
+        "Printmaking"
+      ]
+    },
+    {
+      "id": "artist-jun",
+      "name": "JT -BROKE-",
+      "bio": "",
+      "location": "Austin, TX",
+      "email": "",
+      "phone": "512.915.6916",
+      "instagram": "@venezuelanbroke",
+      "website": "",
+      "status": "shown",
+      "notes": "",
+      "mediums": [
+        "Collage"
+      ]
+    },
+    {
+      "id": "artist-wren",
+      "name": "Angel HH",
+      "bio": "",
+      "location": "Austin, TX",
+      "email": "",
+      "phone": "",
+      "instagram": "@wrenbuilds",
+      "website": "",
+      "status": "shown",
+      "notes": "",
+      "mediums": [
+        "Painting"
+      ]
+    },
+    {
+      "id": "artist-hazel",
+      "name": "Antonio Zamorai",
+      "bio": "",
+      "location": "Austin, TX",
+      "email": "",
+      "phone": "737.217.5372",
+      "instagram": "@antoniozamorai",
+      "website": "www.zamorai.bigcartel.com",
+      "status": "shown",
+      "notes": "",
+      "mediums": [
+        "Printmaking"
+      ]
+    },
+    {
+      "name": "Ben Appl",
+      "bio": "Ben Appl is a sculptor living and working in Austin, Texas. He received his BFA from the University of Arizona and his MFA from the University of Texas at Austin. He creates large-scale installation and Public Art works that are about the relationship between industry and nature.\n\nBen is also an instructor of art and over the past 20 years he has taught classes such as 3-Dimensional Design, Sculpture, and Ceramics at Texas State University in San Marcos, The University of Texas at Austin and Austin Community College. Currently you will find him in the Sculpture Studio at Austin Community College’s Highland Campus.",
+      "location": "Austin, TX",
+      "mediums": [
+        "Ceramics"
+      ],
+      "email": "",
+      "phone": "512.809.3078",
+      "instagram": "@benapplceramics",
+      "website": "www.benappl.com",
+      "status": "shown",
+      "notes": "",
+      "id": "artist-bfa30f64-5903-4615-b11c-7c2775a0b0eb"
+    },
+    {
+      "name": "Bridgette Reed",
+      "bio": "",
+      "location": "Austin. TX",
+      "mediums": [
+        "Painting",
+        "Sculpture"
+      ],
+      "email": "",
+      "phone": "512.788.3021",
+      "instagram": "@bridgettedeer",
+      "website": "",
+      "status": "shown",
+      "notes": "",
+      "id": "artist-09510e6d-7f8c-489f-ae77-dac0f5ba4441"
+    },
+    {
+      "name": "Hannah Busekrus",
+      "bio": "",
+      "location": "Austin, TX",
+      "mediums": [
+        "Textiles"
+      ],
+      "email": "",
+      "phone": "",
+      "instagram": "@hanasaurusrex",
+      "website": "",
+      "status": "shown",
+      "notes": "",
+      "id": "artist-b2f174c8-9250-4951-827f-0ddb14947119"
+    },
+    {
+      "name": "Jasmine Chock",
+      "bio": "Jasmine Chock is a Chinese American artist based in Austin, TX. Chock works in a wide range of 3D materials, photography and video, including, but not limited to, sewing, ceramics, noodles, and plastic bags. In making art, she playfully explores the relationships between humans and the public, private and personal objects and spaces they interact with. Chock takes inspiration from observing everyday routines and traditions and subverts their usual purposes, creating humorous, uncanny relationships. \n\n\nContact\nAustin, TX\njasminechock@gmail.com\nInstagram: @jasmineechock\nCV\nClick to Download\nInstagram - Black Circle\nLinkedIn Basic Black \nArtist Statement\nI explore the relationships between humans and the public, private and personal spaces and objects they interact with. I take inspiration from observing everyday routines and traditions. In my work, I create a humorous, uncanny intimacy through a nonsensical juxtaposition of objects and environments that subverts their usual purposes. I make sculpture with a unique variety of mediums and found objects, and I employ photography and video to document performative interactions with the objects and environments I create.\n​\nI am interested in creating these strange relationships as a way to explore the sense of belonging and comfort humans innately search for in their everyday lives. Asking the viewer, “what does it mean to belong, to feel comfort and to experience joy?” My work provides humorous, yet sometimes unrealistic, solutions for finding these attributes.",
+      "location": "Austin, TX",
+      "mediums": [
+        "Cartoneria Mache",
+        "Mixed Media",
+        "New Media",
+        "Sculpture",
+        "Printmaking",
+        "Textiles"
+      ],
+      "email": "jasminechock@gmail.com",
+      "phone": "972.787.8053",
+      "instagram": "@jasmineechock",
+      "website": "jasminechock.wixsite.com/mysite/work",
+      "status": "shown",
+      "notes": "",
+      "id": "artist-64264b5a-efa5-4de1-b11e-cbbc6b557823"
+    },
+    {
+      "name": "Jose Luigi",
+      "bio": "",
+      "location": "Austin, TX",
+      "mediums": [
+        "Sculpture",
+        "Printmaking",
+        "Painting"
+      ],
+      "email": "j0seluigi@tutamail.com",
+      "phone": "915.304.8998",
+      "instagram": "@j0seluigi",
+      "website": "www.joseluigi.com",
+      "status": "shown",
+      "notes": "",
+      "id": "artist-46904c62-a924-4c75-8c16-9097a7c14af0"
+    },
+    {
+      "name": "Karen Maness",
+      "bio": "Karen L. Maness' unique studio practice is a fusion of painting expansive landscapes and capturing intimate human stories through figurative painting. Her Art celebrates the universal connection people share with their environments and each other. She delves into the constancy of time and the fleeting moments of human interaction. Her works transform spaces and beckon viewers to immerse themselves in her infinite landscapes. Her studio practice and design work encompass public Art, exhibitions, consultation, and corporate commissions. Maness' paintings have been exhibited nationally and are part of collections worldwide. ",
+      "location": "Austin, TX",
+      "mediums": [
+        "Painting"
+      ],
+      "email": "",
+      "phone": "",
+      "instagram": "@karenmaness",
+      "website": "https://www.karenmaness.com",
+      "status": "shown",
+      "notes": "",
+      "id": "artist-13a451e3-c18e-4ef8-9186-b5f430930701"
+    },
+    {
+      "name": "Kiasar Nejad",
+      "bio": "",
+      "location": "Austin, TX",
+      "mediums": [
+        "Sculpture",
+        "Painting"
+      ],
+      "email": "",
+      "phone": "",
+      "instagram": "@kiasar.n",
+      "website": "https://kiasarart.com",
+      "status": "shown",
+      "notes": "",
+      "id": "artist-40882ea7-3c3f-4f68-99df-c79e869485c8"
+    }
+  ],
+  "artworks": [
+    {
+      "id": "art-dyvsvtl",
+      "artistId": "artist-marisol",
+      "title": "Water Jar for a Dry Season",
+      "year": 2023,
+      "medium": "Burnished stoneware",
+      "dimensions": "14 × 10 × 10 in",
+      "price": 850,
+      "sold": true,
+      "soldDate": "2026-01-16",
+      "exhibitionIds": [
+        "ex-clay-rituals"
+      ]
+    },
+    {
+      "id": "art-fvftc46",
+      "artistId": "artist-marisol",
+      "title": "Altar No. 3",
+      "year": 2024,
+      "medium": "Terracotta, iron oxide",
+      "dimensions": "18 × 12 × 8 in",
+      "price": 1200,
+      "sold": true,
+      "soldDate": "2026-08-05",
+      "exhibitionIds": [
+        "ex-clay-rituals",
+        "ex-terra-firma"
+      ]
+    },
+    {
+      "id": "art-2nltecp",
+      "artistId": "artist-marisol",
+      "title": "Terra Firma Vessel I",
+      "year": 2025,
+      "medium": "Hand-built terracotta",
+      "dimensions": "22 × 14 × 14 in",
+      "price": 2400,
+      "sold": false,
+      "exhibitionIds": [
+        "ex-terra-firma"
+      ]
+    },
+    {
+      "id": "art-ctqprg7",
+      "artistId": "artist-marisol",
+      "title": "Small Offering",
+      "year": 2025,
+      "medium": "Stoneware, slip glaze",
+      "dimensions": "6 × 5 × 5 in",
+      "price": 400,
+      "sold": false,
+      "exhibitionIds": [
+        "ex-terra-firma",
+        "ex-small-works"
+      ]
+    },
+    {
+      "id": "art-j2knoa8",
+      "artistId": "artist-theo",
+      "title": "Dusk Field, October",
+      "year": 2023,
+      "medium": "Oil on linen",
+      "dimensions": "36 × 48 in",
+      "price": 2400,
+      "sold": true,
+      "soldDate": "2026-04-12",
+      "exhibitionIds": [
+        "ex-distant-light"
+      ]
+    },
+    {
+      "id": "art-8wkrwcq",
+      "artistId": "artist-theo",
+      "title": "Window at Blue Hour",
+      "year": 2024,
+      "medium": "Oil on linen",
+      "dimensions": "40 × 52 in",
+      "price": 3800,
+      "sold": false,
+      "exhibitionIds": [
+        "ex-distant-light"
+      ]
+    },
+    {
+      "id": "art-9grhozx",
+      "artistId": "artist-theo",
+      "title": "Study for a Lit Window",
+      "year": 2023,
+      "medium": "Oil on paper",
+      "dimensions": "9 × 12 in",
+      "price": 150,
+      "sold": true,
+      "soldDate": "2026-03-20",
+      "exhibitionIds": [
+        "ex-small-works",
+        "ex-distant-light"
+      ]
+    },
+    {
+      "id": "art-iz44pr3",
+      "artistId": "artist-priya",
+      "title": "Monsoon Map II",
+      "year": 2023,
+      "medium": "Dyed wool, raw silk",
+      "dimensions": "48 × 36 in",
+      "price": 1800,
+      "sold": false,
+      "exhibitionIds": [
+        "ex-woven-hours"
+      ]
+    },
+    {
+      "id": "art-b63lqgi",
+      "artistId": "artist-priya",
+      "title": "Route of My Grandmother",
+      "year": 2022,
+      "medium": "Woven wool, cotton warp",
+      "dimensions": "36 × 30 in",
+      "price": 950,
+      "sold": true,
+      "soldDate": "2026-05-09",
+      "exhibitionIds": [
+        "ex-woven-hours"
+      ]
+    },
+    {
+      "id": "art-q5mp9h3",
+      "artistId": "artist-priya",
+      "title": "Rain Ledger",
+      "year": 2024,
+      "medium": "Wool and silk tapestry",
+      "dimensions": "24 × 20 in",
+      "price": 600,
+      "sold": false,
+      "exhibitionIds": [
+        "ex-woven-hours",
+        "ex-small-works"
+      ]
+    },
+    {
+      "id": "art-14vhedt",
+      "artistId": "artist-jun",
+      "title": "Intersection, 2:14 AM",
+      "year": 2024,
+      "medium": "Archival pigment print, ed. 1/5",
+      "dimensions": "20 × 24 in",
+      "price": 700,
+      "sold": false,
+      "exhibitionIds": [
+        "ex-night-register"
+      ]
+    },
+    {
+      "id": "art-lauiq6c",
+      "artistId": "artist-jun",
+      "title": "Storefront, Closing Time",
+      "year": 2023,
+      "medium": "Archival pigment print, ed. 2/5",
+      "dimensions": "16 × 20 in",
+      "price": 450,
+      "sold": true,
+      "soldDate": "2026-07-14",
+      "exhibitionIds": [
+        "ex-night-register"
+      ]
+    },
+    {
+      "id": "art-qolo9vm",
+      "artistId": "artist-wren",
+      "title": "Load Bearing Memory",
+      "year": 2024,
+      "medium": "Salvaged oak, welded steel",
+      "dimensions": "54 × 18 × 12 in",
+      "price": 2600,
+      "sold": false,
+      "exhibitionIds": [
+        "ex-grain-rust"
+      ]
+    },
+    {
+      "id": "art-1v0lli7",
+      "artistId": "artist-wren",
+      "title": "Pocket Beam",
+      "year": 2023,
+      "medium": "Pine offcut, rust patina steel",
+      "dimensions": "8 × 4 × 3 in",
+      "price": 175,
+      "sold": true,
+      "soldDate": "2026-03-21",
+      "exhibitionIds": [
+        "ex-small-works"
+      ]
+    },
+    {
+      "id": "art-i39wi4b",
+      "artistId": "artist-hazel",
+      "title": "Greenhouse, After Rain",
+      "year": 2024,
+      "medium": "Etching with aquatint, ed. 3/12",
+      "dimensions": "11 × 14 in",
+      "price": 350,
+      "sold": false,
+      "exhibitionIds": [
+        "ex-impressions-ink"
+      ]
+    }
+  ],
+  "exhibitions": [
+    {
+      "id": "ex-clay-rituals",
+      "title": "Clay Rituals",
+      "type": "solo",
+      "artistId": "artist-marisol",
+      "description": "Marisol Vega’s first Do Tell solo: burnished vessels and altar-like forms rooted in desert ceremony.",
+      "openingDate": "2026-01-10",
+      "closingDate": "2026-01-31",
+      "status": "past"
+    },
+    {
+      "id": "ex-small-works",
+      "title": "Small Works, Big Feelings",
+      "type": "curated",
+      "description": "A cozy group show of works under 16 inches — sketches, etchings, studies, and pocket-size sculpture from gallery friends.",
+      "openingDate": "2026-03-14",
+      "closingDate": "2026-03-31",
+      "status": "past"
+    },
+    {
+      "id": "ex-distant-light",
+      "title": "Distant Light",
+      "type": "solo",
+      "artistId": "artist-theo",
+      "description": "New oil paintings by Theo Anselm — dusk fields, lit windows, and the hour before full dark.",
+      "openingDate": "2026-04-11",
+      "closingDate": "2026-04-30",
+      "status": "past"
+    },
+    {
+      "id": "ex-woven-hours",
+      "title": "Woven Hours",
+      "type": "solo",
+      "artistId": "artist-priya",
+      "description": "Priya Raman’s woven wall works chart monsoon maps and family migration in wool and raw silk.",
+      "openingDate": "2026-05-09",
+      "closingDate": "2026-05-31",
+      "status": "past"
+    },
+    {
+      "id": "ex-dodo-lanterns",
+      "title": "DoDoFriday: Paper Lanterns",
+      "type": "craft-night",
+      "description": "Free community craft night — folding and lighting paper lanterns for the darker months. All materials provided.",
+      "openingDate": "2026-07-25",
+      "closingDate": "2026-07-25",
+      "status": "past"
+    },
+    {
+      "id": "ex-night-register",
+      "title": "Night Register",
+      "type": "solo",
+      "artistId": "artist-jun",
+      "description": "Jun Park’s night photography: empty intersections, lit storefronts, and the city after everyone goes home.",
+      "openingDate": "2026-07-11",
+      "closingDate": "2026-07-31",
+      "status": "past"
+    },
+    {
+      "id": "ex-dodo-zines",
+      "title": "DoDoFriday: Winter Zine Jam",
+      "type": "craft-night",
+      "description": "Free community craft night — cut, paste, and photocopy your own winter zine. Supplies and snacks on us.",
+      "openingDate": "2026-08-22",
+      "closingDate": "2026-08-22",
+      "status": "past"
+    },
+    {
+      "id": "ex-terra-firma",
+      "title": "Terra Firma",
+      "type": "solo",
+      "artistId": "artist-marisol",
+      "description": "Marisol Vega returns with a new body of terracotta work — larger vessels, rougher surfaces, grounded and sure.",
+      "openingDate": "2026-09-12",
+      "closingDate": "2026-09-30",
+      "status": "current"
+    },
+    {
+      "id": "ex-grain-rust",
+      "title": "Grain & Rust",
+      "type": "solo",
+      "artistId": "artist-wren",
+      "description": "Wren Okafor’s salvaged-timber and steel sculptures — balance, weight, and what buildings remember.",
+      "openingDate": "2026-10-10",
+      "closingDate": "2026-10-31",
+      "status": "upcoming"
+    },
+    {
+      "id": "ex-impressions-ink",
+      "title": "Impressions in Ink",
+      "type": "solo",
+      "artistId": "artist-hazel",
+      "description": "Proposed solo of Hazel Beaumont’s etchings and monotypes — greenhouses, gardens, and overgrown doorways.",
+      "openingDate": "2026-11-14",
+      "closingDate": "2026-11-30",
+      "status": "proposed"
+    }
+  ],
+  "plans": {
+    "2026-09": {
+      "soloArtistId": "artist-marisol",
+      "soloStatus": "confirmed",
+      "dodoTheme": "Terracotta pinch pots"
+    },
+    "2026-10": {
+      "soloArtistId": "artist-wren",
+      "soloStatus": "confirmed",
+      "dodoTheme": "Scrap-wood ornaments"
+    },
+    "2026-11": {
+      "soloArtistId": "artist-hazel",
+      "soloStatus": "proposed",
+      "dodoTheme": ""
+    }
+  }
+};
+
+function normalize(d) {
+  if (d && Array.isArray(d.artists) && Array.isArray(d.artworks) && Array.isArray(d.exhibitions)) {
+    return { artists: d.artists, artworks: d.artworks, exhibitions: d.exhibitions, plans: d.plans || {} };
+  }
+  return FALLBACK;
+}
+const host = window.DaimonWidget;
+const canSubmit = !!(host && typeof host.emit === 'function');
+const hasStatus = !!(host && typeof host.onStatusChange === 'function' && 'status' in host);
+let DATA = normalize(host && host.data && host.data.main);
+
+// ---------- Generated cover (flat shapes, neutral + one accent tint) ----------
+function hash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h; }
+function prng(seed) { let a = seed >>> 0; return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function coverSVG(id, cls) {
+  const r = prng(hash(id));
+  const tones = ['var(--kimi-color-text-quaternary)', 'var(--kimi-color-text-tertiary)', 'color-mix(in srgb, var(--kimi-color-text-primary) 55%, transparent)'];
+  const accent = 'color-mix(in srgb, var(--kimi-color-accent) 45%, transparent)';
+  const W = 420, H = cls === 'cover-sm' ? 120 : 180;
+  let shapes = '';
+  const n = 4 + Math.floor(r() * 3);
+  for (let i = 0; i < n; i++) {
+    const c = i === 0 ? accent : tones[Math.floor(r() * tones.length)];
+    const kind = r();
+    const x = r() * W, y = r() * H, s = 24 + r() * 70;
+    if (kind < 0.35) shapes += `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${(s / 2).toFixed(0)}" fill="${c}"/>`;
+    else if (kind < 0.6) shapes += `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${(s / 2).toFixed(0)}" fill="none" stroke="${c}" stroke-width="10"/>`;
+    else if (kind < 0.8) shapes += `<rect x="${x.toFixed(0)}" y="${(y - s / 2).toFixed(0)}" width="${(s * 1.3).toFixed(0)}" height="${s.toFixed(0)}" fill="${c}"/>`;
+    else shapes += `<path d="M ${x.toFixed(0)} ${y.toFixed(0)} a ${(s / 2).toFixed(0)} ${(s / 2).toFixed(0)} 0 0 1 ${s.toFixed(0)} 0 z" fill="${c}"/>`;
+  }
+  return `<svg class="${cls}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Generated exhibition cover"><rect width="${W}" height="${H}" fill="var(--kimi-color-surface-muted)"/>${shapes}</svg>`;
+}
+
+const typeChip = t => t === 'solo' ? '<span class="chip chip-solo">Solo show</span>'
+  : t === 'curated' ? '<span class="chip chip-curated">Curated</span>'
+  : '<span class="chip chip-dodo">DoDoFriday</span>';
+
+// Next second Saturday / fourth Saturday (this month if still upcoming, else next)
+function nextOf(fn) {
+  const n = new Date();
+  for (let off = 0; off <= 1; off++) {
+    const base = new Date(n.getFullYear(), n.getMonth() + off, 1);
+    const d = fn(base.getFullYear(), base.getMonth());
+    if (d >= new Date(n.getFullYear(), n.getMonth(), n.getDate())) return d;
+  }
+}
+
+// ---------- Drawer: view / edit / add records ----------
+const KIND_LABEL = { artists: 'artist', artworks: 'artwork', exhibitions: 'exhibition', plans: 'month plan' };
+const ID_PREFIX = { artists: 'artist', artworks: 'art', exhibitions: 'ex' };
+const veilEl = document.getElementById('drawer-veil');
+const bodyEl = document.getElementById('drawer-body');
+const titleEl = document.getElementById('drawer-title');
+const kindEl = document.getElementById('drawer-kind');
+const statusEl = document.getElementById('drawer-status');
+const saveBtn = document.getElementById('drawer-save');
+const deleteBtn = document.getElementById('drawer-delete');
+const cancelBtn = document.getElementById('drawer-cancel');
+const closeBtn = document.getElementById('drawer-close');
+
+let openRef = null;      // {collection, id?} | {collection:'plans', key?}
+let draftMode = 'edit';  // 'edit' | 'create'
+let savePhase = 'idle';  // 'idle' | 'saving' | 'saved' | 'error'
+let deleteArmed = false;
+let draftRec = null;
+let savedTimer = null;
+let deleteTimer = null;
+
+function genId(collection) {
+  return ID_PREFIX[collection] + '-' + Math.random().toString(16).slice(2, 10);
+}
+
+function fieldDefs(collection) {
+  if (collection === 'artists') return [
+    { k: 'name', label: 'Name', type: 'text', req: true, ph: 'Full name' },
+    { k: 'status', label: 'Status', type: 'select', options: [['shown', 'Shown at the gallery'], ['upcoming', 'Upcoming'], ['archived', 'Archived']] },
+    { k: 'location', label: 'Location', type: 'text', ph: 'City, ST' },
+    { k: 'mediums', label: 'Mediums', type: 'text', list: true, ph: 'Painting, Ceramics…' },
+    { k: 'email', label: 'Email', type: 'text' },
+    { k: 'phone', label: 'Phone', type: 'text' },
+    { k: 'instagram', label: 'Instagram', type: 'text', ph: '@handle' },
+    { k: 'website', label: 'Website', type: 'text', ph: 'https://…' },
+    { k: 'bio', label: 'Bio', type: 'textarea' },
+    { k: 'notes', label: 'Internal notes', type: 'textarea' },
+  ];
+  if (collection === 'artworks') return [
+    { k: 'title', label: 'Title', type: 'text', req: true, ph: 'Artwork title' },
+    { k: 'artistId', label: 'Artist', type: 'artist' },
+    { k: 'year', label: 'Year', type: 'number' },
+    { k: 'medium', label: 'Medium', type: 'text', ph: 'Oil on linen' },
+    { k: 'dimensions', label: 'Dimensions', type: 'text', ph: '36 × 48 in' },
+    { k: 'price', label: 'Price (USD)', type: 'number' },
+    { k: 'sold', label: 'Sold', type: 'checkbox' },
+    { k: 'soldDate', label: 'Date sold', type: 'date' },
+    { k: 'exhibitionIds', label: 'Exhibited in', type: 'exhibitions' },
+  ];
+  return [
+    { k: 'title', label: 'Title', type: 'text', req: true, ph: 'Exhibition title' },
+    { k: 'type', label: 'Type', type: 'select', options: [['solo', 'Solo show'], ['curated', 'Curated'], ['craft-night', 'DoDoFriday craft night']] },
+    { k: 'artistId', label: 'Featured artist', type: 'artist', optional: true },
+    { k: 'status', label: 'Status', type: 'select', options: [['upcoming', 'Upcoming'], ['current', 'On now'], ['proposed', 'Proposed'], ['past', 'Past']] },
+    { k: 'openingDate', label: 'Opening date', type: 'date' },
+    { k: 'closingDate', label: 'Closing date', type: 'date' },
+    { k: 'description', label: 'Description', type: 'textarea' },
+  ];
+}
+
+function planDefs() {
+  return [
+    { k: 'soloArtistId', label: 'Solo artist', type: 'artist', optional: true },
+    { k: 'soloStatus', label: 'Solo status', type: 'select', options: [['open', 'Open slot'], ['confirmed', 'Confirmed'], ['proposed', 'Proposed']] },
+    { k: 'dodoTheme', label: 'DoDoFriday theme', type: 'text', ph: 'e.g. Paper lanterns' },
+  ];
+}
+
+function buildField(def, rec) {
+  const v = rec[def.k];
+  if (def.type === 'textarea') {
+    return `<label><span class="f-label">${esc(def.label)}</span><textarea class="f-textarea" data-f="${def.k}" rows="4">${esc(v)}</textarea></label>`;
+  }
+  if (def.type === 'select') {
+    const opts = def.options.map(([val, lab]) => `<option value="${val}"${String(v) === val ? ' selected' : ''}>${lab}</option>`).join('');
+    return `<label><span class="f-label">${esc(def.label)}</span><select class="f-select" data-f="${def.k}">${opts}</select></label>`;
+  }
+  if (def.type === 'artist') {
+    const empty = def.optional ? `<option value=""${!v ? ' selected' : ''}>— none —</option>` : '';
+    const opts = DATA.artists.map(a => `<option value="${esc(a.id)}"${a.id === v ? ' selected' : ''}>${esc(a.name)}</option>`).join('');
+    return `<label><span class="f-label">${esc(def.label)}</span><select class="f-select" data-f="${def.k}">${empty}${opts}</select></label>`;
+  }
+  if (def.type === 'exhibitions') {
+    const boxes = DATA.exhibitions.map(e =>
+      `<label class="f-check"><input type="checkbox" data-fx="${esc(e.id)}"${(Array.isArray(v) && v.indexOf(e.id) !== -1) ? ' checked' : ''}> ${esc(e.title)}</label>`
+    ).join('');
+    return `<div class="f-group"><div class="f-group-title">${esc(def.label)}</div>${boxes || '<div class="f-group-title">No exhibitions yet</div>'}</div>`;
+  }
+  if (def.type === 'checkbox') {
+    return `<label class="f-check"><input type="checkbox" data-f="${def.k}"${v ? ' checked' : ''}> ${esc(def.label)}</label>`;
+  }
+  if (def.list) {
+    const val = Array.isArray(v) ? v.join(', ') : (v || '');
+    return `<label><span class="f-label">${esc(def.label)}</span><input class="f-input" type="text" data-f="${def.k}" value="${esc(val)}"${def.ph ? ` placeholder="${esc(def.ph)}"` : ''}></label>`;
+  }
+  const type = def.type === 'number' ? 'number' : def.type === 'date' ? 'date' : 'text';
+  const val = v == null ? '' : v;
+  const step = type === 'number' ? ' step="1" min="0"' : '';
+  return `<label><span class="f-label">${esc(def.label)}</span><input class="f-input" type="${type}" data-f="${def.k}" value="${esc(val)}"${def.ph ? ` placeholder="${esc(def.ph)}"` : ''}${step}></label>`;
+}
+
+function collectFromDefs(defs) {
+  const rec = {};
+  defs.forEach(def => {
+    if (def.type === 'exhibitions') {
+      const checked = bodyEl.querySelectorAll ? bodyEl.querySelectorAll('input[data-fx]:checked') : [];
+      rec[def.k] = Array.from(checked).map(i => i.getAttribute('data-fx'));
+      return;
+    }
+    const el = bodyEl.querySelector ? bodyEl.querySelector(`[data-f="${def.k}"]`) : null;
+    if (!el) return;
+    if (def.type === 'checkbox') rec[def.k] = el.checked;
+    else if (def.type === 'number') rec[def.k] = el.value === '' ? '' : Number(el.value);
+    else if (def.list) rec[def.k] = el.value.split(',').map(s => s.trim()).filter(Boolean);
+    else rec[def.k] = el.value;
+  });
+  return rec;
+}
+
+function defaultRecord(collection) {
+  if (collection === 'artists') return { id: openRef.id, name: '', status: 'shown', location: 'Austin, TX', email: '', phone: '', instagram: '', website: '', bio: '', notes: '', mediums: [] };
+  if (collection === 'artworks') return { id: openRef.id, artistId: (DATA.artists[0] || {}).id || '', title: '', year: new Date().getFullYear(), medium: '', dimensions: '', price: '', sold: false, soldDate: '', exhibitionIds: [] };
+  return { id: openRef.id, title: '', type: 'solo', artistId: '', status: 'upcoming', openingDate: '', closingDate: '', description: '' };
+}
+
+function drawerRecord() {
+  if (!openRef) return null;
+  if (draftMode === 'create') {
+    if (!draftRec) draftRec = defaultRecord(openRef.collection);
+    return draftRec;
+  }
+  if (openRef.collection === 'plans') {
+    return Object.assign({ soloArtistId: '', soloStatus: 'open', dodoTheme: '' }, DATA.plans[openRef.key] || {});
+  }
+  const found = DATA[openRef.collection].find(r => r.id === openRef.id);
+  return found || null;
+}
+
+function recordExists() {
+  if (!openRef) return false;
+  if (openRef.collection === 'plans') return !!DATA.plans[openRef.key];
+  return DATA[openRef.collection].some(r => r.id === openRef.id);
+}
+
+function planTitle(key) {
+  const parts = String(key).split('-').map(Number);
+  if (parts.length < 2 || !parts[0] || !parts[1]) return String(key);
+  return new Date(parts[0], parts[1] - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function showDrawer() {
+  renderDrawer();
+  if (veilEl) veilEl.hidden = false;
+}
+
+function closeDrawer() {
+  openRef = null;
+  draftRec = null;
+  savePhase = 'idle';
+  deleteArmed = false;
+  clearTimeout(savedTimer);
+  if (veilEl) veilEl.hidden = true;
+}
+
+function flashStatus(cls, text) {
+  statusEl.className = 'drawer-status' + (cls ? ' ' + cls : '');
+  statusEl.textContent = text;
+}
+
+function updateFoot() {
+  const running = savePhase === 'saving';
+  if (saveBtn) saveBtn.disabled = running || !canSubmit;
+  if (deleteBtn) deleteBtn.disabled = running || !canSubmit;
+  if (!canSubmit) { flashStatus('', 'Catalog sync is not connected in this preview'); return; }
+  if (savePhase === 'saving') flashStatus('', deleteArmed ? 'Deleting…' : 'Saving…');
+  else if (savePhase === 'saved') flashStatus('is-ok', 'Saved');
+  else if (savePhase === 'error') flashStatus('is-error', "Couldn't save — try again");
+  else flashStatus('', '');
+}
+
+function renderDrawer() {
+  if (!openRef || !bodyEl) return;
+  const isPlan = openRef.collection === 'plans';
+  const defs = isPlan ? planDefs() : fieldDefs(openRef.collection);
+  let rec = drawerRecord();
+  if (!rec) { closeDrawer(); return; }
+  // Keep unsaved typed values when a background sync re-renders the form.
+  const hasForm = !!(bodyEl.querySelector && bodyEl.querySelector('[data-f]'));
+  if (savePhase === 'idle' && hasForm) {
+    rec = Object.assign({}, rec, collectFromDefs(defs));
+    if (draftMode === 'create') draftRec = rec;
+  }
+  if (titleEl) titleEl.textContent = isPlan ? planTitle(openRef.key) : (rec.name || rec.title || 'Untitled');
+  if (kindEl) kindEl.textContent = (draftMode === 'create' ? 'New ' : 'Edit ') + KIND_LABEL[openRef.collection];
+  bodyEl.innerHTML = defs.map(d => buildField(d, rec)).join('');
+  if (deleteBtn) {
+    deleteBtn.hidden = draftMode === 'create' || (isPlan && !DATA.plans[openRef.key]);
+    if (!deleteArmed) deleteBtn.textContent = 'Delete';
+  }
+  updateFoot();
+}
+
+function openEntry(collection, id) {
+  openRef = { collection, id };
+  draftMode = 'edit';
+  savePhase = 'idle';
+  deleteArmed = false;
+  draftRec = null;
+  showDrawer();
+}
+
+function openPlan(key) {
+  openRef = { collection: 'plans', key };
+  draftMode = 'edit';
+  savePhase = 'idle';
+  deleteArmed = false;
+  draftRec = null;
+  showDrawer();
+}
+
+function openCreate(collection) {
+  draftMode = 'create';
+  openRef = { collection, id: genId(collection) };
+  savePhase = 'idle';
+  deleteArmed = false;
+  draftRec = null;
+  showDrawer();
+}
+
+function onSave() {
+  if (!openRef || !canSubmit || savePhase === 'saving') return;
+  const isPlan = openRef.collection === 'plans';
+  const defs = isPlan ? planDefs() : fieldDefs(openRef.collection);
+  const rec = collectFromDefs(defs);
+  if (!isPlan) {
+    const missingName = defs.some(d => d.req && !String(rec[d.k] || '').trim());
+    if (missingName) { flashStatus('is-error', 'Name is required'); return; }
+    rec.id = openRef.id;
+  }
+  const payload = isPlan
+    ? { action: 'update', collection: 'plans', key: openRef.key, record: rec }
+    : { action: draftMode === 'create' ? 'create' : 'update', collection: openRef.collection, id: rec.id, record: rec };
+  savePhase = 'saving';
+  draftRec = rec;
+  updateFoot();
+  host.emit('submit', payload);
+}
+
+function onDelete() {
+  if (!openRef || !canSubmit || savePhase === 'saving') return;
+  if (!deleteArmed) {
+    deleteArmed = true;
+    deleteBtn.textContent = 'Confirm delete';
+    clearTimeout(deleteTimer);
+    deleteTimer = setTimeout(() => { deleteArmed = false; if (deleteBtn) deleteBtn.textContent = 'Delete'; }, 3000);
+    return;
+  }
+  const payload = openRef.collection === 'plans'
+    ? { action: 'delete', collection: 'plans', key: openRef.key }
+    : { action: 'delete', collection: openRef.collection, id: openRef.id };
+  savePhase = 'saving';
+  updateFoot();
+  host.emit('submit', payload);
+}
+
+function completeSave() {
+  if (!openRef) { savePhase = 'idle'; return; }
+  savePhase = 'saved';
+  if (draftMode === 'create') draftMode = 'edit';
+  if (!recordExists()) { closeDrawer(); return; }
+  renderDrawer();
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(() => {
+    if (savePhase === 'saved') { savePhase = 'idle'; updateFoot(); }
+  }, 2500);
+}
+
+function handleStatusChange() {
+  if (!hasStatus || savePhase !== 'saving') return;
+  const st = host.status;
+  if (st === 'idle' || st === 'degraded' || st === 'needs_input') completeSave();
+  else if (st === 'error' || st === 'cancelled') { savePhase = 'error'; updateFoot(); }
+}
+
+function handleData(d) {
+  DATA = normalize(d && d.main);
+  renderAll();
+  if (!openRef) return;
+  if (savePhase === 'saving') {
+    if (!hasStatus) completeSave(); // hosts without a status API: delivery means done
+    return;
+  }
+  if (draftMode === 'edit' && !recordExists()) { closeDrawer(); return; }
+  renderDrawer();
+}
+
+// ---------- Render ----------
+const VIEW_IDS = ['view-overview', 'view-artists', 'view-artworks', 'view-exhibitions', 'view-planning'];
+
+function renderAll() {
+  const scroll = {};
+  VIEW_IDS.forEach(id => { const el = document.getElementById(id); if (el) scroll[id] = el.scrollTop; });
+
+  const ARTISTS = DATA.artists;
+  const EXHIBITIONS = DATA.exhibitions;
+  const WORKS = DATA.artworks;
+  const PLANS = DATA.plans;
+
+  const artistById = id => ARTISTS.find(a => a.id === id);
+  const artistName = id => (artistById(id) || {}).name || 'Unknown artist';
+  const exById = id => EXHIBITIONS.find(e => e.id === id);
+  const exDates = e => ({ open: iso(e.openingDate), close: iso(e.closingDate) });
+  const workEx = w => w.exhibitionIds || [];
+
+  const soldWorks = WORKS.filter(w => w.sold);
+  const gross = soldWorks.reduce((s, w) => s + (Number(w.price) || 0), 0);
+  const commission = gross * COMMISSION;
+  const projected = WORKS.filter(w => !w.sold).reduce((s, w) => s + (Number(w.price) || 0), 0) * COMMISSION;
+  const current = EXHIBITIONS.find(e => e.status === 'current');
+  const upcoming = EXHIBITIONS.filter(e => e.status === 'upcoming' || e.status === 'proposed');
+
+  const nextOpening = nextOf(secondSaturday);
+  const nextDodo = nextOf(fourthSaturday);
+  const openingPlan = PLANS[monthKey(nextOpening.getFullYear(), nextOpening.getMonth())];
+  const dodoPlan = PLANS[monthKey(nextDodo.getFullYear(), nextDodo.getMonth())];
+
+  const todayEl = document.getElementById('today');
+  if (todayEl) todayEl.textContent = fmt(new Date());
+
+  const overviewEl = document.getElementById('view-overview');
+  if (overviewEl) overviewEl.innerHTML = `
+  <div class="grid2">
+    <div class="panel">
+      <div class="label">Now showing</div>
+      ${current ? coverSVG(current.id, 'cover') + `
+      <div class="show-title">${esc(current.title)}</div>
+      <div class="show-meta">${esc(artistName(current.artistId))} · ${typeChip(current.type)}</div>
+      <div class="show-dates">${fmt(exDates(current).open)} – ${fmt(exDates(current).close)} · ${WORKS.filter(w => workEx(w).indexOf(current.id) !== -1).length} works exhibited</div>` : '<div class="sub">No current show</div>'}
+    </div>
+    <div class="panel">
+      <div class="label">Coming up</div>
+      <div class="row-item">
+        <div class="row-main">
+          <div class="row-title">Next opening · ${fmt(nextOpening)}</div>
+          <div class="row-sub">Second Saturday${openingPlan && openingPlan.soloArtistId ? ' · ' + esc(artistName(openingPlan.soloArtistId)) : ''}</div>
+        </div>
+      </div>
+      <div class="row-item">
+        <div class="row-main">
+          <div class="row-title">Next DoDoFriday · ${fmt(nextDodo)}</div>
+          <div class="row-sub">Fourth Saturday · free craft night${dodoPlan && dodoPlan.dodoTheme ? ' · ' + esc(dodoPlan.dodoTheme) : ''}</div>
+        </div>
+      </div>
+      ${upcoming.map(e => { const d = exDates(e); return `
+      <div class="row-item is-clickable" data-open="exhibitions" data-id="${esc(e.id)}" role="button" tabindex="0">
+        ${coverSVG(e.id, 'cover-sm')}
+        <div class="row-main">
+          <div class="row-title">${esc(e.title)}</div>
+          <div class="row-sub">${e.artistId ? esc(artistName(e.artistId)) + ' · ' : ''}${fmt(d.open)}</div>
+        </div>
+        <span class="chip ${e.status === 'upcoming' ? 'chip-confirmed' : 'chip-proposed'}">${esc(e.status)}</span>
+      </div>`; }).join('')}
+    </div>
+  </div>
+  <div class="grid4" style="margin-top: var(--kimi-space-3);">
+    <div class="panel"><div class="label">Artists shown</div><div class="value">${ARTISTS.filter(a => a.status === 'shown').length}</div><div class="sub">${ARTISTS.length} on roster</div></div>
+    <div class="panel"><div class="label">Works cataloged</div><div class="value">${WORKS.length}</div><div class="sub">${WORKS.length - soldWorks.length} available</div></div>
+    <div class="panel"><div class="label">Commission earned</div><div class="value">${money(commission)}</div><div class="sub">30% of ${money(gross)} sold</div></div>
+    <div class="panel"><div class="label">Projected commission</div><div class="value">${money(projected)}</div><div class="sub">if all available works sell</div></div>
+  </div>`;
+
+  const artistsEl = document.getElementById('view-artists');
+  if (artistsEl) artistsEl.innerHTML = `
+  <div class="view-toolbar">
+    <span class="view-hint">Click an artist to view and edit their record</span>
+    <button class="btn btn-secondary btn-add" data-add="artists">Add artist</button>
+  </div>` +
+  ARTISTS.map(a => {
+    const works = WORKS.filter(w => w.artistId === a.id);
+    const soldAmt = works.filter(w => w.sold).reduce((s, w) => s + (Number(w.price) || 0), 0);
+    const shows = EXHIBITIONS.filter(e => e.artistId === a.id);
+    const mediums = Array.isArray(a.mediums) ? a.mediums.join(', ') : (a.medium || '');
+    return `<div class="row-item is-clickable" data-open="artists" data-id="${esc(a.id)}" role="button" tabindex="0">
+    <div class="row-main">
+      <div class="row-title">${esc(a.name)} <span class="chip ${a.status === 'shown' ? 'chip-confirmed' : a.status === 'upcoming' ? 'chip-solo' : 'chip-available'}">${esc(a.status)}</span></div>
+      <div class="row-sub">${esc(mediums)}${a.location ? ' · ' + esc(a.location) : ''}${shows.length ? ' · ' + esc(shows.map(s => s.title).join(', ')) : ''}</div>
+    </div>
+    <div class="row-end">
+      <div class="row-title">${works.length} works</div>
+      <div class="row-sub">${soldAmt ? money(soldAmt) + ' sold' : 'no sales yet'}</div>
+    </div>
+  </div>`;
+  }).join('');
+
+  const artworksEl = document.getElementById('view-artworks');
+  if (artworksEl) artworksEl.innerHTML = `
+  <div class="view-toolbar">
+    <span class="view-hint">Click a work to view and edit it</span>
+    <button class="btn btn-secondary btn-add" data-add="artworks">Add artwork</button>
+  </div>
+  <table class="kimi-table">
+  <thead><tr><th>Title</th><th>Artist</th><th class="num">Price</th><th>Status</th><th class="num">Commission (30%)</th><th>Exhibited in</th></tr></thead>
+  <tbody>${WORKS.map(w => `<tr class="is-clickable" data-open="artworks" data-id="${esc(w.id)}" role="button" tabindex="0">
+    <td>${esc(w.title)} <span style="color: var(--kimi-color-text-quaternary); font-size: 12px;">${esc(w.year)}</span></td>
+    <td style="color: var(--kimi-color-text-secondary);">${esc(artistName(w.artistId))}</td>
+    <td class="num">${money(Number(w.price) || 0)}</td>
+    <td>${w.sold ? '<span class="chip chip-sold">Sold</span>' : '<span class="chip chip-available">Available</span>'}</td>
+    <td class="num" style="color: var(--kimi-color-text-secondary);">${money((Number(w.price) || 0) * COMMISSION)}${w.sold ? '' : ' if sold'}</td>
+    <td style="color: var(--kimi-color-text-tertiary); font-size: 12px;">${esc(workEx(w).map(id => (exById(id) || {}).title || id).join(', '))}</td>
+  </tr>`).join('')}</tbody></table>`;
+
+  const groups = [
+    ['On now', EXHIBITIONS.filter(e => e.status === 'current')],
+    ['Upcoming & proposed', EXHIBITIONS.filter(e => e.status === 'upcoming' || e.status === 'proposed')],
+    ['Archive', EXHIBITIONS.filter(e => e.status === 'past').slice().reverse()],
+  ];
+  const exEl = document.getElementById('view-exhibitions');
+  if (exEl) exEl.innerHTML = `
+  <div class="view-toolbar">
+    <span class="view-hint">Click a show to view and edit it</span>
+    <button class="btn btn-secondary btn-add" data-add="exhibitions">Add exhibition</button>
+  </div>` +
+  groups.map(([label, list]) => list.length ? `
+  <div class="section-title">${label}</div>
+  <div class="ex-grid">${list.map(e => { const d = exDates(e);
+    const wc = WORKS.filter(w => workEx(w).indexOf(e.id) !== -1).length; return `
+    <div class="ex-card is-clickable" data-open="exhibitions" data-id="${esc(e.id)}" role="button" tabindex="0">
+      ${coverSVG(e.id, 'cover')}
+      <div class="ex-name">${esc(e.title)}</div>
+      <div class="show-dates">${typeChip(e.type)} ${e.artistId ? esc(artistName(e.artistId)) + ' · ' : ''}${fmt(d.open)}${d.close.getTime() !== d.open.getTime() ? ' – ' + fmt(d.close) : ''}</div>
+      <div class="row-sub" style="margin-top: 2px;">${wc ? wc + ' works exhibited' : 'Community craft night'}</div>
+    </div>`; }).join('')}</div>` : '').join('');
+
+  // Six months forward from the current month; months without a plan are open slots
+  const now = new Date();
+  const months = [];
+  for (let off = 0; off < 6; off++) {
+    const base = new Date(now.getFullYear(), now.getMonth() + off, 1);
+    months.push({ year: base.getFullYear(), month: base.getMonth() });
+  }
+  const planEl = document.getElementById('view-planning');
+  if (planEl) planEl.innerHTML = `
+  <div class="view-toolbar">
+    <span class="view-hint">Click a month to assign the solo show or set the DoDoFriday theme</span>
+  </div>` +
+  months.map(({ year, month }) => {
+    const key = monthKey(year, month);
+    const plan = PLANS[key];
+    const open = secondSaturday(year, month);
+    const dd = fourthSaturday(year, month);
+    const monthName = open.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const status = plan ? plan.soloStatus : 'open';
+    return `<div class="row-item is-clickable" data-open="plans" data-key="${key}" role="button" tabindex="0">
+    <div class="row-main">
+      <div class="row-title">${monthName}</div>
+      <div class="row-sub">Solo opens ${fmt(open)}${plan && plan.soloArtistId ? ' · ' + esc(artistName(plan.soloArtistId)) : ' · unassigned'} · DoDoFriday ${fmt(dd)}${plan && plan.dodoTheme ? ' · ' + esc(plan.dodoTheme) : ''}</div>
+    </div>
+    <span class="chip ${status === 'confirmed' ? 'chip-confirmed' : status === 'proposed' ? 'chip-proposed' : 'chip-available'}">${status === 'open' ? 'Open slot' : esc(status)}</span>
+  </div>`;
+  }).join('') + `<div class="mono-note">Solo shows open the second Saturday · DoDoFridays land the fourth Saturday · edits here save back to the Do Tell app catalog</div>`;
+
+  VIEW_IDS.forEach(id => { const el = document.getElementById(id); if (el) el.scrollTop = scroll[id] || 0; });
+}
+
+renderAll();
+
+// Live updates from the sync task (guarded: not every host exposes subscriptions)
+if (host && typeof host.onDataChange === 'function') {
+  host.onDataChange(handleData);
+}
+if (hasStatus) {
+  host.onStatusChange(handleStatusChange);
+}
+
+// ---------- Click routing (delegated so re-renders never rebind) ----------
+if (typeof document.addEventListener === 'function') {
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (!t || typeof t.closest !== 'function') return;
+    if (t === veilEl) { closeDrawer(); return; }
+    if (typeof closeBtn !== 'undefined' && t === closeBtn) { closeDrawer(); return; }
+    if (typeof cancelBtn !== 'undefined' && t === cancelBtn) { closeDrawer(); return; }
+    if (typeof saveBtn !== 'undefined' && t === saveBtn) { onSave(); return; }
+    if (typeof deleteBtn !== 'undefined' && t === deleteBtn) { onDelete(); return; }
+    const addBtn = t.closest('[data-add]');
+    if (addBtn) { openCreate(addBtn.getAttribute('data-add')); return; }
+    const opener = t.closest('[data-open]');
+    if (opener) {
+      const c = opener.getAttribute('data-open');
+      if (c === 'plans') openPlan(opener.getAttribute('data-key'));
+      else openEntry(c, opener.getAttribute('data-id'));
+    }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && openRef) { closeDrawer(); return; }
+    if ((e.key === 'Enter' || e.key === ' ') && e.target && typeof e.target.closest === 'function') {
+      const opener = e.target.closest('[data-open]');
+      if (opener) {
+        e.preventDefault();
+        const c = opener.getAttribute('data-open');
+        if (c === 'plans') openPlan(opener.getAttribute('data-key'));
+        else openEntry(c, opener.getAttribute('data-id'));
+      }
+    }
+  });
+}
+
+// ---------- Tabs ----------
+if (typeof document.querySelectorAll === 'function') {
+  document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => { b.classList.toggle('is-selected', b === btn); b.setAttribute('aria-selected', b === btn ? 'true' : 'false'); });
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + btn.getAttribute('data-view')));
+  }));
+}
+</script>
+</body>
+</html>
