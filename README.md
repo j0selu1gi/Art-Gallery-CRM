@@ -1,5 +1,7 @@
 # Do Tell Gallery
 
+**▶ Live demo: https://j0selu1gi.github.io/Art-Gallery-CRM/**
+
 A gallery-management dashboard for the Do Tell gallery: the current show at a glance,
 artist rosters, artworks, exhibitions, and a rolling six-month plan of openings —
 including DoDoFridays and solo-show slots. Data is edited in place through slide-in
